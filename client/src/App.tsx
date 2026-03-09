@@ -5,12 +5,20 @@ import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
+import HtmlPage from "./pages/HtmlPage";
+import BootstrapPage from "./pages/BootstrapPage";
+import VuePage from "./pages/VuePage";
+import TailwindPage from "./pages/TailwindPage";
 
 
 function Router() {
   return (
     <Switch>
       <Route path={"/"} component={Home} />
+      <Route path={"/html"} component={HtmlPage} />
+      <Route path={"/bootstrap"} component={BootstrapPage} />
+      <Route path={"/vue"} component={VuePage} />
+      <Route path={"/tailwind"} component={TailwindPage} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />
