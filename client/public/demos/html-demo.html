@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Location Picker - HTML Demo</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f8fafc; color: #1e293b; padding: 16px; }
+        .picker-container { max-width: 100%; margin: 0 auto; background: #fff; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); overflow: hidden; border: 1px solid #e2e8f0; }
+        .picker-header { padding: 14px 18px; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; gap: 10px; }
+        .picker-header h2 { font-size: 16px; font-weight: 700; color: #1e40af; }
+        .pin-icon { width: 28px; height: 28px; background: #3b82f6; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-size: 14px; }
+        .controls { padding: 14px 18px; }
+        .search-row { display: flex; gap: 8px; margin-bottom: 10px; }
+        .search-row input { flex: 1; padding: 9px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 13px; outline: none; transition: border-color 0.2s; }
+        .search-row input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+        .btn { padding: 9px 14px; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .btn-primary { background: #3b82f6; color: white; }
+        .btn-primary:hover { background: #2563eb; }
+        .btn-secondary { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+        .btn-secondary:hover { background: #e2e8f0; }
+        .coord-row { display: flex; gap: 10px; }
+        .coord-group { flex: 1; }
+        .coord-group label { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; margin-bottom: 4px; }
+        .coord-group input { width: 100%; padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; font-family: monospace; background: #f8fafc; color: #334155; }
+        #mapCanvas { width: 100%; height: 350px; }
+        #markerStatus { padding: 6px 14px; font-size: 12px; color: #3b82f6; display: none; }
+    </style>
+</head>
+<body>
+<div class="picker-container">
+    <div class="picker-header">
+        <div class="pin-icon">&#9906;</div>
+        <h2>Select Location</h2>
+    </div>
+    <div class="controls">
+        <div class="search-row">
+            <input type="text" id="address" placeholder="Search for an address..." onkeyup="return keyup(event)">
+            <button class="btn btn-primary" onclick="codeAddress();">Search</button>
+            <button class="btn btn-secondary" id="current_location_btn">My Location</button>
+        </div>
+        <div class="coord-row">
+            <div class="coord-group">
+                <label>Latitude</label>
+                <input type="text" id="lati" placeholder="Latitude" onkeyup="return keyupl(event)">
+            </div>
+            <div class="coord-group">
+                <label>Longitude</label>
+                <input type="text" id="longi" placeholder="Longitude" onkeyup="return keyupl(event)">
+            </div>
+        </div>
+    </div>
+    <div id="markerStatus"></div>
+    <div id="mapCanvas"></div>
+</div>
+
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAqPAlqD2AE9wvm2Ou19B8dqiD7FVUhyC4"></script>
+<script>
+var geocoder, map, marker, infoWindow;
+var startLat = 24.72823802423595;
+var startLng = 46.76216150781249;
+
+function geocodePosition(pos) {
+    geocoder.geocode({latLng: pos}, function(responses) {
+        if (responses && responses.length > 0) {
+            document.getElementById('address').value = responses[0].formatted_address;
+        }
+    });
+}
+function updateMarkerPosition(latLng) {
+    document.getElementById('lati').value = latLng.lat();
+    document.getElementById('longi').value = latLng.lng();
+}
+function initialize() {
+    geocoder = new google.maps.Geocoder();
+    var latLng = new google.maps.LatLng(startLat, startLng);
+    map = new google.maps.Map(document.getElementById('mapCanvas'), {
+        zoom: 8, center: latLng, mapTypeId: google.maps.MapTypeId.ROADMAP
+    });
+    marker = new google.maps.Marker({position: latLng, title: 'Your Position', map: map, draggable: true});
+    infoWindow = new google.maps.InfoWindow();
+    updateMarkerPosition(latLng);
+    geocodePosition(latLng);
+    google.maps.event.addListener(marker, 'drag', function() {
+        updateMarkerPosition(marker.getPosition());
+    });
+    google.maps.event.addListener(marker, 'dragend', function() {
+        geocodePosition(marker.getPosition());
+    });
+}
+function codeAddress() {
+    var address = document.getElementById("address").value;
+    geocoder.geocode({address: address}, function(results, status) {
+        if (status == google.maps.GeocoderStatus.OK) {
+            map.setCenter(results[0].geometry.location);
+            document.getElementById("lati").value = results[0].geometry.location.lat();
+            document.getElementById("longi").value = results[0].geometry.location.lng();
+            marker.setPosition(results[0].geometry.location);
+        } else {
+            alert("Geocode was not successful: " + status);
+        }
+    });
+}
+function post_value() {
+    var latLng = new google.maps.LatLng(
+        document.getElementById("lati").value,
+        document.getElementById("longi").value
+    );
+    map.setCenter(latLng);
+    marker.setPosition(latLng);
+}
+function keyup(e) { if (e.keyCode == 13) codeAddress(); return false; }
+function keyupl(e) { if (e.keyCode == 13) post_value(); return false; }
+
+document.getElementById('current_location_btn').addEventListener('click', function() {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function(position) {
+            var pos = { lat: position.coords.latitude, lng: position.coords.longitude };
+            geocodePosition(pos);
+            marker.setPosition(pos);
+            document.getElementById("lati").value = pos.lat;
+            document.getElementById("longi").value = pos.lng;
+            map.setCenter(pos);
+        });
+    }
+});
+
+google.maps.event.addDomListener(window, 'load', initialize);
+</script>
+</body>
+</html>

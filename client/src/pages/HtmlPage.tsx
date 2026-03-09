@@ -6,6 +6,8 @@ import PageLayout from "@/components/PageLayout";
 import SectionHeader from "@/components/SectionHeader";
 import CodeBlock from "@/components/CodeBlock";
 import ApiTable from "@/components/ApiTable";
+import LiveDemo from "@/components/LiveDemo";
+import ApiKeyBanner from "@/components/ApiKeyBanner";
 import { FileCode, AlertTriangle } from "lucide-react";
 
 const htmlFullCode = `<!DOCTYPE html>
@@ -235,6 +237,19 @@ export default function HtmlPage() {
         </div>
       </section>
 
+          {/* Live Demo */}
+      <section className="py-12 md:py-16" style={{ background: "oklch(0.97 0.005 250)" }}>
+        <div className="container max-w-4xl">
+          <SectionHeader
+            badge="Live Demo"
+            badgeColor="oklch(0.65 0.2 25)"
+            title="Try It Live"
+            description="Interact with the HTML location picker below. Drag the marker, search for addresses, or use your current location."
+          />
+          <LiveDemo src="/demos/html-demo.html" title="Pure HTML" accentColor="oklch(0.65 0.2 25)" />
+        </div>
+      </section>
+
       {/* Quick Start Steps */}
       <section className="py-12 md:py-16">
         <div className="container max-w-4xl">
@@ -246,21 +261,8 @@ export default function HtmlPage() {
           />
           <ApiTable title="Implementation Steps" rows={stepRows} />
 
-          {/* Important Note */}
-          <div className="flex items-start gap-3 p-4 rounded-lg border my-8"
-            style={{ background: "oklch(0.98 0.02 85)", borderColor: "oklch(0.85 0.08 85)" }}>
-            <AlertTriangle className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: "oklch(0.65 0.15 70)" }} />
-            <div>
-              <p className="text-sm font-semibold mb-1" style={{ color: "oklch(0.35 0.05 85)" }}>
-                API Key Required
-              </p>
-              <p className="text-sm" style={{ color: "oklch(0.45 0.03 85)" }}>
-                Replace <code className="font-mono px-1 py-0.5 rounded text-xs"
-                  style={{ background: "oklch(0.92 0.03 85)", color: "oklch(0.4 0.08 85)" }}>YOUR_API_KEY</code> with
-                your Google Maps API key. Enable the Maps JavaScript API and Geocoding API in your Google Cloud Console.
-              </p>
-            </div>
-          </div>
+          {/* API Key */}
+          <ApiKeyBanner />
 
           {/* Full Code */}
           <SectionHeader

@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Location Picker - Tailwind CSS Demo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        #mapCanvas { width: 100%; height: 350px; }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen p-4">
+<div class="max-w-full mx-auto">
+    <div class="bg-white rounded-2xl shadow-lg shadow-slate-200/50 overflow-hidden border border-slate-200/60">
+        <!-- Header -->
+        <div class="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-sky-500 rounded-lg flex items-center justify-center">
+                    <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/>
+                    </svg>
+                </div>
+                <h2 class="text-base font-bold text-slate-800">Location Picker</h2>
+            </div>
+            <span id="statusBadge" class="px-2.5 py-1 rounded-full text-xs font-semibold bg-sky-50 text-sky-600">Ready</span>
+        </div>
+        <!-- Controls -->
+        <div class="p-4 space-y-3">
+            <div class="flex gap-2">
+                <input type="text" id="address" placeholder="Search for an address..."
+                       onkeyup="return keyup(event)"
+                       class="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-400 transition-all">
+                <button onclick="codeAddress()" class="px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white rounded-lg text-sm font-semibold transition-colors">
+                    Search
+                </button>
+                <button id="current_location_btn" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-sm font-semibold transition-colors whitespace-nowrap">
+                    My Location
+                </button>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Latitude</label>
+                    <input type="text" id="lati" onkeyup="return keyupl(event)"
+                           class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm font-mono bg-slate-50 text-slate-700">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Longitude</label>
+                    <input type="text" id="longi" onkeyup="return keyupl(event)"
+                           class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm font-mono bg-slate-50 text-slate-700">
+                </div>
+            </div>
+        </div>
+        <div id="mapCanvas"></div>
+    </div>
+</div>
+
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAqPAlqD2AE9wvm2Ou19B8dqiD7FVUhyC4"></script>
+<script>
+var geocoder, map, marker, infoWindow;
+var startLat = 24.72823802423595;
+var startLng = 46.76216150781249;
+
+function setStatus(text) {
+    document.getElementById('statusBadge').textContent = text;
+}
+function geocodePosition(pos) {
+    geocoder.geocode({latLng: pos}, function(responses) {
+        if (responses && responses.length > 0) {
+            document.getElementById('address').value = responses[0].formatted_address;
+        }
+    });
+}
+function updateMarkerPosition(latLng) {
+    document.getElementById('lati').value = latLng.lat();
+    document.getElementById('longi').value = latLng.lng();
+}
+function initialize() {
+    geocoder = new google.maps.Geocoder();
+    var latLng = new google.maps.LatLng(startLat, startLng);
+    map = new google.maps.Map(document.getElementById('mapCanvas'), {
+        zoom: 8, center: latLng, mapTypeId: google.maps.MapTypeId.ROADMAP
+    });
+    marker = new google.maps.Marker({position: latLng, title: 'Your Position', map: map, draggable: true});
+    infoWindow = new google.maps.InfoWindow();
+    updateMarkerPosition(latLng);
+    geocodePosition(latLng);
+    google.maps.event.addListener(marker, 'drag', function() {
+        setStatus('Dragging...');
+        updateMarkerPosition(marker.getPosition());
+    });
+    google.maps.event.addListener(marker, 'dragend', function() {
+        setStatus('Ready');
+        geocodePosition(marker.getPosition());
+    });
+}
+function codeAddress() {
+    var address = document.getElementById("address").value;
+    setStatus('Searching...');
+    geocoder.geocode({address: address}, function(results, status) {
+        if (status == google.maps.GeocoderStatus.OK) {
+            map.setCenter(results[0].geometry.location);
+            document.getElementById("lati").value = results[0].geometry.location.lat();
+            document.getElementById("longi").value = results[0].geometry.location.lng();
+            marker.setPosition(results[0].geometry.location);
+            setStatus('Ready');
+        } else {
+            setStatus('Not found');
+            alert("Geocode was not successful: " + status);
+        }
+    });
+}
+function post_value() {
+    var latLng = new google.maps.LatLng(
+        document.getElementById("lati").value,
+        document.getElementById("longi").value
+    );
+    map.setCenter(latLng);
+    marker.setPosition(latLng);
+}
+function keyup(e) { if (e.keyCode == 13) codeAddress(); return false; }
+function keyupl(e) { if (e.keyCode == 13) post_value(); return false; }
+
+document.getElementById('current_location_btn').addEventListener('click', function() {
+    if (navigator.geolocation) {
+        setStatus('Locating...');
+        navigator.geolocation.getCurrentPosition(function(position) {
+            var pos = { lat: position.coords.latitude, lng: position.coords.longitude };
+            geocodePosition(pos);
+            marker.setPosition(pos);
+            document.getElementById("lati").value = pos.lat;
+            document.getElementById("longi").value = pos.lng;
+            map.setCenter(pos);
+            setStatus('Ready');
+        });
+    }
+});
+
+google.maps.event.addDomListener(window, 'load', initialize);
+</script>
+</body>
+</html>
