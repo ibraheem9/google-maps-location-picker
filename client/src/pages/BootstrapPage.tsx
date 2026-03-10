@@ -93,18 +93,16 @@ const bootstrapFullCode = `<!DOCTYPE html>
 
 <!-- Bootstrap 5 JS Bundle -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<!-- Google Maps API - Replace YOUR_API_KEY -->
-<script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY"></script>
-
 <script>
-// ============================================
-// Location Picker - Bootstrap 5 Version
-// ============================================
+// ============================================================
+//  CONFIGURATION — Replace this with your own Google Maps API key
+// ============================================================
+var API_KEY = 'YOUR_API_KEY';
+// ============================================================
 
 var geocoder, map, marker, infoWindow;
 var startLat = 24.7282, startLng = 46.7622;
-
-geocoder = new google.maps.Geocoder();
+var mapLoaded = false;
 
 /**
  * Reverse geocode a position to get the formatted address
@@ -144,46 +142,48 @@ function updateMarkerAddress(str) {
 }
 
 /**
- * Initialize the Google Map with Bootstrap-styled container
+ * Initialize the Google Map (called by Maps API callback)
  */
-function initialize() {
+function initMap() {
+    mapLoaded = true;
+    geocoder = new google.maps.Geocoder();
     var latLng = new google.maps.LatLng(startLat, startLng);
 
     map = new google.maps.Map(document.getElementById('mapCanvas'), {
-        zoom: 8,
-        center: latLng,
-        mapTypeId: google.maps.MapTypeId.ROADMAP
+        zoom: 8, center: latLng, mapTypeId: google.maps.MapTypeId.ROADMAP
     });
 
     marker = new google.maps.Marker({
-        position: latLng,
-        title: 'Drag to select location',
-        map: map,
-        draggable: true
+        position: latLng, title: 'Drag to select location',
+        map: map, draggable: true
     });
 
     updateMarkerPosition(latLng);
     geocodePosition(latLng);
 
-    // Drag event listeners
-    google.maps.event.addListener(marker, 'dragstart', function() {
-        updateMarkerStatus('<span class="badge bg-primary">Dragging...</span>');
-    });
-
     google.maps.event.addListener(marker, 'drag', function() {
+        updateMarkerStatus('<span class="badge bg-primary">Dragging...</span>');
         updateMarkerPosition(marker.getPosition());
     });
-
     google.maps.event.addListener(marker, 'dragend', function() {
         updateMarkerStatus('');
         geocodePosition(marker.getPosition());
     });
 }
 
+function onMapError() {
+    console.error('Google Maps failed to load.');
+    document.getElementById('mapCanvas').innerHTML =
+        '<div class="p-5 text-center text-danger">' +
+        '<h5>Google Maps Failed to Load</h5>' +
+        '<p>Check your API_KEY and ensure Maps JavaScript API is enabled.</p></div>';
+}
+
 /**
  * Geocode the address from the search input
  */
 function codeAddress() {
+    if (!mapLoaded) return;
     var address = document.getElementById("address").value;
     if (!address) return;
 
@@ -205,6 +205,7 @@ function codeAddress() {
  * Move marker to manually entered coordinates
  */
 function post_value() {
+    if (!mapLoaded) return;
     var lat = parseFloat(document.getElementById("lati").value);
     var lng = parseFloat(document.getElementById("longi").value);
     if (isNaN(lat) || isNaN(lng)) return;
@@ -231,13 +232,8 @@ function setMarkerPosition(lat, lng) {
 function keyup(e) { if (e.keyCode === 13) codeAddress(); return false; }
 function keyupl(e) { if (e.keyCode === 13) post_value(); return false; }
 
-// Initialize on load
-google.maps.event.addDomListener(window, 'load', initialize);
-
-// Current location with HTML5 Geolocation
-infoWindow = new google.maps.InfoWindow();
-
 document.getElementById('current_location_btn').addEventListener('click', function() {
+    if (!mapLoaded) return;
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(function(position) {
             var pos = {
@@ -256,6 +252,18 @@ document.getElementById('current_location_btn').addEventListener('click', functi
         alert('Browser does not support geolocation.');
     }
 });
+
+// Load Google Maps asynchronously with error handling
+(function() {
+    var script = document.createElement('script');
+    script.src = 'https://maps.googleapis.com/maps/api/js?key='
+        + API_KEY + '&callback=initMap&loading=async';
+    script.async = true;
+    script.defer = true;
+    script.onerror = onMapError;
+    document.head.appendChild(script);
+    setTimeout(function() { if (!mapLoaded) onMapError(); }, 10000);
+})();
 </script>
 
 </body>

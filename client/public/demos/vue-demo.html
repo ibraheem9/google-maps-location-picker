@@ -26,6 +26,17 @@
         .coord-group label { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; margin-bottom: 4px; }
         .coord-group input { width: 100%; padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; font-family: monospace; background: #f8fafc; }
         #mapCanvas { width: 100%; height: 350px; }
+        .map-error {
+            display: none; width: 100%; height: 350px; background: #fef2f2;
+            border-top: 1px solid #fecaca; flex-direction: column;
+            align-items: center; justify-content: center; padding: 30px; text-align: center;
+        }
+        .map-error.visible { display: flex; }
+        .map-error .error-icon { font-size: 40px; margin-bottom: 12px; }
+        .map-error h3 { font-size: 16px; font-weight: 700; color: #991b1b; margin-bottom: 8px; }
+        .map-error p { font-size: 13px; color: #7f1d1d; line-height: 1.6; max-width: 500px; }
+        .map-error code { background: #fee2e2; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-family: monospace; color: #991b1b; }
+        .map-error a { color: #1d4ed8; text-decoration: underline; }
     </style>
 </head>
 <body>
@@ -52,12 +63,27 @@
                 </div>
             </div>
         </div>
-        <div id="mapCanvas"></div>
+        <div id="mapCanvas" v-show="mapReady"></div>
+        <div id="mapError" class="map-error" :class="{ visible: mapFailed }">
+            <div class="error-icon">&#9888;</div>
+            <h3>Google Maps Failed to Load</h3>
+            <p>
+                The API key may be restricted or invalid for this domain.<br><br>
+                Open this file and replace the <code>API_KEY</code> value at the top of the script with your own Google Maps API key.<br><br>
+                Get a key from the <a href="https://console.cloud.google.com/apis/credentials" target="_blank">Google Cloud Console</a>.<br>
+                Make sure to enable <strong>Maps JavaScript API</strong> and <strong>Geocoding API</strong>.
+            </p>
+        </div>
     </div>
 </div>
 
-<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAqPAlqD2AE9wvm2Ou19B8dqiD7FVUhyC4"></script>
 <script>
+// ============================================================
+//  CONFIGURATION — Replace this with your own Google Maps API key
+// ============================================================
+var API_KEY = 'AIzaSyAqPAlqD2AE9wvm2Ou19B8dqiD7FVUhyC4';
+// ============================================================
+
 const { createApp, ref, onMounted } = Vue;
 
 createApp({
@@ -65,10 +91,14 @@ createApp({
         const lat = ref('24.728238');
         const lng = ref('46.762162');
         const address = ref('');
-        const status = ref('Ready');
+        const status = ref('Loading...');
+        const mapReady = ref(false);
+        const mapFailed = ref(false);
         let map = null, marker = null, geocoder = null;
 
         function initMap() {
+            mapReady.value = true;
+            status.value = 'Ready';
             geocoder = new google.maps.Geocoder();
             const center = new google.maps.LatLng(24.72823802423595, 46.76216150781249);
             map = new google.maps.Map(document.getElementById('mapCanvas'), {
@@ -89,6 +119,16 @@ createApp({
             });
         }
 
+        // Expose initMap globally for the Google Maps callback
+        window.initMap = initMap;
+
+        function onMapError() {
+            mapFailed.value = true;
+            status.value = 'Error';
+            console.error('Google Maps failed to load. Check your API key and its restrictions.');
+        }
+        window.onMapError = onMapError;
+
         function geocodePosition(pos) {
             geocoder.geocode({ latLng: pos }, function(results) {
                 if (results && results.length > 0) {
@@ -98,7 +138,7 @@ createApp({
         }
 
         function searchAddress() {
-            if (!address.value) return;
+            if (!address.value || !mapReady.value) return;
             status.value = 'Searching...';
             geocoder.geocode({ address: address.value }, function(results, s) {
                 if (s === google.maps.GeocoderStatus.OK) {
@@ -116,6 +156,7 @@ createApp({
         }
 
         function getCurrentLocation() {
+            if (!mapReady.value) return;
             if (navigator.geolocation) {
                 status.value = 'Locating...';
                 navigator.geolocation.getCurrentPosition(function(position) {
@@ -131,14 +172,24 @@ createApp({
         }
 
         function goToCoords() {
+            if (!mapReady.value) return;
             const latLng = new google.maps.LatLng(parseFloat(lat.value), parseFloat(lng.value));
             map.setCenter(latLng);
             marker.setPosition(latLng);
         }
 
-        onMounted(() => { initMap(); });
+        onMounted(() => {
+            // Load Google Maps asynchronously
+            var script = document.createElement('script');
+            script.src = 'https://maps.googleapis.com/maps/api/js?key=' + API_KEY + '&callback=initMap&loading=async';
+            script.async = true;
+            script.defer = true;
+            script.onerror = onMapError;
+            document.head.appendChild(script);
+            setTimeout(function() { if (!mapReady.value) onMapError(); }, 10000);
+        });
 
-        return { lat, lng, address, status, searchAddress, getCurrentLocation, goToCoords };
+        return { lat, lng, address, status, mapReady, mapFailed, searchAddress, getCurrentLocation, goToCoords };
     }
 }).mount('#app');
 </script>

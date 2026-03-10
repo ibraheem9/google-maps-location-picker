@@ -125,13 +125,12 @@ const vueFullCode = `<!DOCTYPE html>
     </div>
 </div>
 
-<!-- Google Maps API - Replace YOUR_API_KEY -->
-<script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY"><\/script>
-
 <script>
-// ============================================
-// Location Picker - Vue 3 Composition API
-// ============================================
+// ============================================================
+//  CONFIGURATION — Replace this with your own Google Maps API key
+// ============================================================
+var API_KEY = 'YOUR_API_KEY';
+// ============================================================
 
 const { createApp, ref, onMounted } = Vue;
 
@@ -176,9 +175,9 @@ const app = createApp({
         }
 
         /**
-         * Initialize the map on component mount
+         * Initialize the map (called by Google Maps callback)
          */
-        onMounted(() => {
+        function initMap() {
             const startPos = new google.maps.LatLng(24.7282, 46.7622);
             geocoder = new google.maps.Geocoder();
 
@@ -215,6 +214,26 @@ const app = createApp({
                 updateCoords(pos);
                 reverseGeocode(pos);
             });
+        }
+
+        // Expose initMap globally for Google Maps callback
+        window.initMap = initMap;
+
+        // Load Google Maps asynchronously on mount
+        onMounted(() => {
+            const script = document.createElement('script');
+            script.src = 'https://maps.googleapis.com/maps/api/js?key='
+                + API_KEY + '&callback=initMap&loading=async';
+            script.async = true;
+            script.defer = true;
+            script.onerror = () => {
+                console.error('Google Maps failed to load.');
+                document.getElementById('mapCanvas').innerHTML =
+                    '<div style="padding:40px;text-align:center;color:#991b1b;">' +
+                    '<h3>Google Maps Failed to Load</h3>' +
+                    '<p>Check your API_KEY variable.</p></div>';
+            };
+            document.head.appendChild(script);
         });
 
         /**

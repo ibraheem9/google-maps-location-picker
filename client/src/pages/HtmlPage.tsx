@@ -82,12 +82,16 @@ const htmlFullCode = `<!DOCTYPE html>
     <div id="mapCanvas"></div>
 </div>
 
-<!-- Replace YOUR_API_KEY with your actual Google Maps API key -->
-<script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY"></script>
 <script>
+// ============================================================
+//  CONFIGURATION — Replace this with your own Google Maps API key
+// ============================================================
+var API_KEY = 'YOUR_API_KEY';
+// ============================================================
+
 var geocoder, map, marker, infoWindow;
 var startLat = 24.7282, startLng = 46.7622;
-geocoder = new google.maps.Geocoder();
+var mapLoaded = false;
 
 function geocodePosition(pos) {
     geocoder.geocode({ latLng: pos }, function(responses) {
@@ -114,7 +118,9 @@ function updateMarkerAddress(str) {
     document.getElementById('address').value = str;
 }
 
-function initialize() {
+function initMap() {
+    mapLoaded = true;
+    geocoder = new google.maps.Geocoder();
     var latLng = new google.maps.LatLng(startLat, startLng);
     map = new google.maps.Map(document.getElementById('mapCanvas'), {
         zoom: 8, center: latLng, mapTypeId: google.maps.MapTypeId.ROADMAP
@@ -126,9 +132,6 @@ function initialize() {
     updateMarkerPosition(latLng);
     geocodePosition(latLng);
 
-    google.maps.event.addListener(marker, 'dragstart', function() {
-        updateMarkerStatus('Dragging...');
-    });
     google.maps.event.addListener(marker, 'drag', function() {
         updateMarkerStatus('Dragging...');
         updateMarkerPosition(marker.getPosition());
@@ -139,7 +142,17 @@ function initialize() {
     });
 }
 
+// Called when Google Maps script fails to load
+function onMapError() {
+    console.error('Google Maps failed to load. Check your API key.');
+    document.getElementById('mapCanvas').innerHTML =
+        '<div style="padding:40px;text-align:center;color:#991b1b;">' +
+        '<h3>Google Maps Failed to Load</h3>' +
+        '<p>Check your API_KEY and ensure Maps JavaScript API is enabled.</p></div>';
+}
+
 function codeAddress() {
+    if (!mapLoaded) return;
     var address = document.getElementById("address").value;
     if (!address) return;
     geocoder.geocode({ address: address }, function(results, status) {
@@ -156,6 +169,7 @@ function codeAddress() {
 }
 
 function post_value() {
+    if (!mapLoaded) return;
     var lat = parseFloat(document.getElementById("lati").value);
     var lng = parseFloat(document.getElementById("longi").value);
     if (isNaN(lat) || isNaN(lng)) return;
@@ -177,10 +191,8 @@ function setMarkerPosition(lat, lng) {
 function keyup(e) { if (e.keyCode === 13) codeAddress(); return false; }
 function keyupl(e) { if (e.keyCode === 13) post_value(); return false; }
 
-google.maps.event.addDomListener(window, 'load', initialize);
-infoWindow = new google.maps.InfoWindow();
-
 document.getElementById('current_location_btn').addEventListener('click', function() {
+    if (!mapLoaded) return;
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(function(position) {
             var pos = { lat: position.coords.latitude, lng: position.coords.longitude };
@@ -269,7 +281,7 @@ export default function HtmlPage() {
             badge="Full Code"
             badgeColor="oklch(0.65 0.2 25)"
             title="Complete HTML File"
-            description="Copy this entire file and save it as index.html. Replace YOUR_API_KEY with your Google Maps API key."
+            description="Copy this entire file and save it as index.html. Replace the API_KEY variable at the top with your own Google Maps API key."
           />
           <CodeBlock code={htmlFullCode} language="html" filename="index.html" />
 
@@ -366,9 +378,21 @@ google.maps.event.addListener(marker, 'dragend', function() {
             document.getElementById("lati").value = pos.lat;
             document.getElementById("longi").value = pos.lng;
             geocodePosition(pos);
-        });
-    }
-});`} language="javascript" filename="Current Location" />
+        });    })
+});
+
+// Load Google Maps asynchronously with callback and error handling
+(function() {
+    var script = document.createElement('script');
+    script.src = 'https://maps.googleapis.com/maps/api/js?key='
+        + API_KEY + '&callback=initMap&loading=async';
+    script.async = true;
+    script.defer = true;
+    script.onerror = onMapError;
+    document.head.appendChild(script);
+    // Timeout fallback
+    setTimeout(function() { if (!mapLoaded) onMapError(); }, 10000);
+})();`} language="javascript" filename="Current Location" />
             </div>
           </div>
         </div>

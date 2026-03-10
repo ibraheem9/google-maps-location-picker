@@ -7,6 +7,12 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         #mapCanvas { width: 100%; height: 350px; }
+        .map-error {
+            display: none; width: 100%; height: 350px; background: #fef2f2;
+            border-top: 1px solid #fecaca; flex-direction: column;
+            align-items: center; justify-content: center; padding: 30px; text-align: center;
+        }
+        .map-error.visible { display: flex; }
     </style>
 </head>
 <body class="bg-slate-50 min-h-screen p-4">
@@ -23,7 +29,7 @@
                 </div>
                 <h2 class="text-base font-bold text-slate-800">Location Picker</h2>
             </div>
-            <span id="statusBadge" class="px-2.5 py-1 rounded-full text-xs font-semibold bg-sky-50 text-sky-600">Ready</span>
+            <span id="statusBadge" class="px-2.5 py-1 rounded-full text-xs font-semibold bg-sky-50 text-sky-600">Loading...</span>
         </div>
         <!-- Controls -->
         <div class="p-4 space-y-3">
@@ -52,18 +58,69 @@
             </div>
         </div>
         <div id="mapCanvas"></div>
+        <div id="mapError" class="map-error">
+            <svg class="w-10 h-10 text-red-500 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
+            </svg>
+            <h3 class="text-base font-bold text-red-800 mb-2">Google Maps Failed to Load</h3>
+            <p class="text-sm text-red-700 leading-relaxed max-w-lg">
+                The API key may be restricted or invalid for this domain.<br><br>
+                Open this file and replace the <code class="bg-red-100 px-2 py-0.5 rounded text-xs font-mono text-red-800">API_KEY</code> value at the top of the script with your own Google Maps API key.<br><br>
+                Get a key from the <a href="https://console.cloud.google.com/apis/credentials" target="_blank" class="text-blue-600 underline">Google Cloud Console</a>.<br>
+                Make sure to enable <strong>Maps JavaScript API</strong> and <strong>Geocoding API</strong>.
+            </p>
+        </div>
     </div>
 </div>
 
-<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAqPAlqD2AE9wvm2Ou19B8dqiD7FVUhyC4"></script>
 <script>
+// ============================================================
+//  CONFIGURATION — Replace this with your own Google Maps API key
+// ============================================================
+var API_KEY = 'AIzaSyAqPAlqD2AE9wvm2Ou19B8dqiD7FVUhyC4';
+// ============================================================
+
 var geocoder, map, marker, infoWindow;
 var startLat = 24.72823802423595;
 var startLng = 46.76216150781249;
+var mapLoaded = false;
 
 function setStatus(text) {
     document.getElementById('statusBadge').textContent = text;
 }
+
+function initMap() {
+    mapLoaded = true;
+    setStatus('Ready');
+    geocoder = new google.maps.Geocoder();
+    var latLng = new google.maps.LatLng(startLat, startLng);
+    map = new google.maps.Map(document.getElementById('mapCanvas'), {
+        zoom: 8, center: latLng, mapTypeId: google.maps.MapTypeId.ROADMAP
+    });
+    marker = new google.maps.Marker({
+        position: latLng, title: 'Your Position', map: map, draggable: true
+    });
+    infoWindow = new google.maps.InfoWindow();
+    updateMarkerPosition(latLng);
+    geocodePosition(latLng);
+
+    google.maps.event.addListener(marker, 'drag', function() {
+        setStatus('Dragging...');
+        updateMarkerPosition(marker.getPosition());
+    });
+    google.maps.event.addListener(marker, 'dragend', function() {
+        setStatus('Ready');
+        geocodePosition(marker.getPosition());
+    });
+}
+
+function onMapError() {
+    document.getElementById('mapCanvas').style.display = 'none';
+    document.getElementById('mapError').classList.add('visible');
+    setStatus('Error');
+    console.error('Google Maps failed to load. Check your API key and its restrictions.');
+}
+
 function geocodePosition(pos) {
     geocoder.geocode({latLng: pos}, function(responses) {
         if (responses && responses.length > 0) {
@@ -75,26 +132,8 @@ function updateMarkerPosition(latLng) {
     document.getElementById('lati').value = latLng.lat();
     document.getElementById('longi').value = latLng.lng();
 }
-function initialize() {
-    geocoder = new google.maps.Geocoder();
-    var latLng = new google.maps.LatLng(startLat, startLng);
-    map = new google.maps.Map(document.getElementById('mapCanvas'), {
-        zoom: 8, center: latLng, mapTypeId: google.maps.MapTypeId.ROADMAP
-    });
-    marker = new google.maps.Marker({position: latLng, title: 'Your Position', map: map, draggable: true});
-    infoWindow = new google.maps.InfoWindow();
-    updateMarkerPosition(latLng);
-    geocodePosition(latLng);
-    google.maps.event.addListener(marker, 'drag', function() {
-        setStatus('Dragging...');
-        updateMarkerPosition(marker.getPosition());
-    });
-    google.maps.event.addListener(marker, 'dragend', function() {
-        setStatus('Ready');
-        geocodePosition(marker.getPosition());
-    });
-}
 function codeAddress() {
+    if (!mapLoaded) return;
     var address = document.getElementById("address").value;
     setStatus('Searching...');
     geocoder.geocode({address: address}, function(results, status) {
@@ -111,6 +150,7 @@ function codeAddress() {
     });
 }
 function post_value() {
+    if (!mapLoaded) return;
     var latLng = new google.maps.LatLng(
         document.getElementById("lati").value,
         document.getElementById("longi").value
@@ -122,6 +162,7 @@ function keyup(e) { if (e.keyCode == 13) codeAddress(); return false; }
 function keyupl(e) { if (e.keyCode == 13) post_value(); return false; }
 
 document.getElementById('current_location_btn').addEventListener('click', function() {
+    if (!mapLoaded) return;
     if (navigator.geolocation) {
         setStatus('Locating...');
         navigator.geolocation.getCurrentPosition(function(position) {
@@ -136,7 +177,16 @@ document.getElementById('current_location_btn').addEventListener('click', functi
     }
 });
 
-google.maps.event.addDomListener(window, 'load', initialize);
+// Load Google Maps asynchronously with callback and error handling
+(function() {
+    var script = document.createElement('script');
+    script.src = 'https://maps.googleapis.com/maps/api/js?key=' + API_KEY + '&callback=initMap&loading=async';
+    script.async = true;
+    script.defer = true;
+    script.onerror = onMapError;
+    document.head.appendChild(script);
+    setTimeout(function() { if (!mapLoaded) onMapError(); }, 10000);
+})();
 </script>
 </body>
 </html>
