@@ -1,17 +1,17 @@
 /**
  * Geo Blueprint Design — Home / Overview Page
- * Hero section with blueprint background, live map demo, features grid, and API reference.
+ * Hero section with blueprint background, live HTML demo iframe, features grid, and API reference.
  */
-import { useRef, useState, useCallback, useEffect } from "react";
+import { useRef, useState, useEffect } from "react";
 import { Link } from "wouter";
 import {
   MapPin, Search, Navigation, GripVertical,
   ArrowRight, Crosshair, Globe, Zap
 } from "lucide-react";
-import { MapView } from "@/components/Map";
 import PageLayout from "@/components/PageLayout";
 import FeatureCard from "@/components/FeatureCard";
 import ApiTable from "@/components/ApiTable";
+import LiveDemo from "@/components/LiveDemo";
 
 const HERO_BG = "https://d2xsxph8kpxj0f.cloudfront.net/310519663367720512/MPSPeMEtee9p2HXE8qM2pD/hero-blueprint-bg-WjduuiSebHgGBVTiMFVfRf.webp";
 
@@ -116,82 +116,6 @@ function AnimateIn({ children, delay = 0, className = "" }: { children: React.Re
 }
 
 export default function Home() {
-  const mapRef = useRef<google.maps.Map | null>(null);
-  const markerRef = useRef<google.maps.Marker | null>(null);
-  const geocoderRef = useRef<google.maps.Geocoder | null>(null);
-  const [lat, setLat] = useState("24.7282");
-  const [lng, setLng] = useState("46.7622");
-  const [address, setAddress] = useState("");
-
-  const handleMapReady = useCallback((map: google.maps.Map) => {
-    mapRef.current = map;
-    const geocoder = new google.maps.Geocoder();
-    geocoderRef.current = geocoder;
-
-    const marker = new google.maps.Marker({
-      position: { lat: 24.7282, lng: 46.7622 },
-      map,
-      draggable: true,
-      title: "Drag to select location",
-    });
-    markerRef.current = marker;
-
-    geocoder.geocode({ location: { lat: 24.7282, lng: 46.7622 } }, (results, status) => {
-      if (status === "OK" && results?.[0]) {
-        setAddress(results[0].formatted_address);
-      }
-    });
-
-    marker.addListener("drag", () => {
-      const pos = marker.getPosition();
-      if (pos) {
-        setLat(pos.lat().toFixed(6));
-        setLng(pos.lng().toFixed(6));
-      }
-    });
-
-    marker.addListener("dragend", () => {
-      const pos = marker.getPosition();
-      if (pos) {
-        geocoder.geocode({ location: pos }, (results, status) => {
-          if (status === "OK" && results?.[0]) {
-            setAddress(results[0].formatted_address);
-          }
-        });
-      }
-    });
-  }, []);
-
-  const handleSearch = useCallback(() => {
-    if (!geocoderRef.current || !mapRef.current || !markerRef.current || !address) return;
-    geocoderRef.current.geocode({ address }, (results, status) => {
-      if (status === "OK" && results?.[0]) {
-        const loc = results[0].geometry.location;
-        mapRef.current!.setCenter(loc);
-        markerRef.current!.setPosition(loc);
-        setLat(loc.lat().toFixed(6));
-        setLng(loc.lng().toFixed(6));
-      }
-    });
-  }, [address]);
-
-  const handleCurrentLocation = useCallback(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition((position) => {
-        const pos = { lat: position.coords.latitude, lng: position.coords.longitude };
-        mapRef.current?.setCenter(pos);
-        markerRef.current?.setPosition(pos);
-        setLat(pos.lat.toFixed(6));
-        setLng(pos.lng.toFixed(6));
-        geocoderRef.current?.geocode({ location: pos }, (results, status) => {
-          if (status === "OK" && results?.[0]) {
-            setAddress(results[0].formatted_address);
-          }
-        });
-      });
-    }
-  }, []);
-
   return (
     <PageLayout>
       {/* Hero Section */}
@@ -234,7 +158,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Live Demo Section */}
+      {/* Live Demo Section — Uses the standalone HTML demo iframe */}
       <section className="py-16 md:py-20" style={{ background: "oklch(0.97 0.005 250)" }}>
         <div className="container">
           <AnimateIn>
@@ -253,70 +177,11 @@ export default function Home() {
           </AnimateIn>
 
           <AnimateIn delay={150}>
-            <div className="max-w-4xl mx-auto rounded-xl overflow-hidden border"
-              style={{ borderColor: "oklch(0.85 0.02 250)", boxShadow: "0 4px 24px oklch(0.15 0.02 250 / 0.08)" }}>
-              {/* Controls */}
-              <div className="p-4 md:p-5 space-y-4" style={{ background: "white" }}>
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <div className="flex-1 flex">
-                    <input
-                      type="text"
-                      value={address}
-                      onChange={(e) => setAddress(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                      placeholder="Search for an address..."
-                      className="flex-1 px-4 py-2.5 border rounded-l-lg text-sm outline-none focus:ring-2"
-                      style={{
-                        borderColor: "oklch(0.88 0.015 250)",
-                        fontFamily: "Source Sans 3, sans-serif",
-                        color: "oklch(0.2 0.02 250)",
-                      }}
-                    />
-                    <button onClick={handleSearch}
-                      className="px-4 py-2.5 rounded-r-lg flex items-center gap-2 text-sm font-medium text-white transition-colors hover:brightness-110"
-                      style={{ background: "oklch(0.55 0.15 250)" }}>
-                      <Search className="w-4 h-4" />
-                      Search
-                    </button>
-                  </div>
-                  <button onClick={handleCurrentLocation}
-                    className="px-4 py-2.5 rounded-lg flex items-center gap-2 text-sm font-medium border transition-colors whitespace-nowrap hover:bg-[oklch(0.95_0.01_250)]"
-                    style={{
-                      borderColor: "oklch(0.85 0.02 250)",
-                      color: "oklch(0.35 0.03 250)",
-                      background: "oklch(0.97 0.005 250)",
-                    }}>
-                    <Navigation className="w-4 h-4" />
-                    My Location
-                  </button>
-                </div>
-                <div className="flex gap-3">
-                  <div className="flex-1">
-                    <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5"
-                      style={{ color: "oklch(0.5 0.02 250)", fontFamily: "Archivo, sans-serif" }}>
-                      Latitude
-                    </label>
-                    <input type="text" value={lat} readOnly
-                      className="w-full px-3 py-2 border rounded-lg text-sm font-mono"
-                      style={{ borderColor: "oklch(0.88 0.015 250)", color: "oklch(0.3 0.02 250)", background: "oklch(0.97 0.005 250)" }} />
-                  </div>
-                  <div className="flex-1">
-                    <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5"
-                      style={{ color: "oklch(0.5 0.02 250)", fontFamily: "Archivo, sans-serif" }}>
-                      Longitude
-                    </label>
-                    <input type="text" value={lng} readOnly
-                      className="w-full px-3 py-2 border rounded-lg text-sm font-mono"
-                      style={{ borderColor: "oklch(0.88 0.015 250)", color: "oklch(0.3 0.02 250)", background: "oklch(0.97 0.005 250)" }} />
-                  </div>
-                </div>
-              </div>
-              {/* Map */}
-              <MapView
-                className="h-[400px]"
-                initialCenter={{ lat: 24.7282, lng: 46.7622 }}
-                initialZoom={8}
-                onMapReady={handleMapReady}
+            <div className="max-w-4xl mx-auto">
+              <LiveDemo
+                src="/demos/html-demo.html"
+                title="Pure HTML"
+                accentColor="oklch(0.55 0.15 250)"
               />
             </div>
           </AnimateIn>
